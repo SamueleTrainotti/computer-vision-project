@@ -27,7 +27,7 @@ print("Blender's Python path:", python_path)
 subprocess.run([python_path, "-m", "ensurepip"])
 
 # Check if the required packages are installed
-required_packages = ["matplotlib"]
+required_packages = ["matplotlib", "glob"]
 
 installed_packages = {pkg.name for pkg in pkgutil.iter_modules()}
 
@@ -45,6 +45,7 @@ sys.path.append(packages_directory)
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import glob
 
 ##### Define the 2D points #####
 points2dZ11 = [(346, 1053), (991, 1053), (1636, 1053), (1894, 458), (1803, 61), (1391, 61), (527, 61), (116, 61),
@@ -303,16 +304,10 @@ class StereoCalibration():
                              cv2.TERM_CRITERIA_MAX_ITER, 100, 1e-5)
 
         # prepare object points
-        # first (i.e. 0,0) in (-4.99753, -3.37665)
-        # second (i.e. in 0, 1) in (-3.74853, -3.37665)
+        self.objp = np.zeros((9*6, 3), np.float32)
+        self.objp[:, :2] = np.mgrid[0:9, 0:6].T.reshape(-1, 2)
         # each square has size 1,2494 x -1,2494
-        self.objp = np.full((9 * 6, 3), [-4.99753, -3.37665, 0], np.float32)
-        offsets = np.ones((9 * 6, 3), np.float32)
-        for i in range(9 * 6):
-            offsets[i] = [(i // 9) * 1.2494, (i % 9) * -1.2494, 0]
-        # print("OFFSET")
-        # print(offsets)
-        self.objp = np.subtract(self.objp, offsets)
+        self.objp *= 1.2494
 
         # Arrays to store object points and image points from all the images.
         self.objpoints = []  # 3d point in real world space
@@ -323,8 +318,12 @@ class StereoCalibration():
         self.read_images(self.cal_path)
 
     def read_images(self, cal_path):
-        images_right = [os.path.join(cal_path, 'Stereo_images', 'calibrate_2_left.png')]
-        images_left = [os.path.join(cal_path, 'Stereo_images', 'calibrate_2_right.png')]
+        images_right = glob.glob(cal_path + 'RIGHT/*.png')
+        images_left = glob.glob(cal_path + 'LEFT/*.png')
+        # images_right = [os.path.join(cal_path, 'calibrate_2_left.png')]
+        # images_left = [os.path.join(cal_path, 'calibrate_2_right.png')]
+        images_left.sort()
+        images_right.sort()
 
         for i, fname in enumerate(images_right):
             img_l = cv2.imread(images_left[i])
@@ -487,7 +486,7 @@ def main():
     bones_2d = model_bones.get_bones_2d(camera_calibration.P)
     draw_bones(bones_2d, baseline_path, output_path)'''
 
-    cal_data = StereoCalibration(base_dir)
+    cal_data = StereoCalibration(os.path.join(base_dir, "Stereo_images"))
     cal_data.reProjectionError(cal_data.imgpoints_l, '1')
     cal_data.reProjectionError(cal_data.imgpoints_r, '2')
     # cal_data.getProjectionMatrix()

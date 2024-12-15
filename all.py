@@ -318,13 +318,18 @@ class StereoCalibration():
         self.read_images(self.cal_path)
 
     def read_images(self, cal_path):
+        print(cal_path)
+        print(glob.escape(cal_path))
+        cal_path = cal_path.replace('\\', '\/')
+        print(cal_path)
+        print(glob.escape(cal_path))
+
         images_right = glob.glob(cal_path + 'RIGHT/*.png')
         images_left = glob.glob(cal_path + 'LEFT/*.png')
-        # images_right = [os.path.join(cal_path, 'calibrate_2_left.png')]
-        # images_left = [os.path.join(cal_path, 'calibrate_2_right.png')]
         images_left.sort()
         images_right.sort()
 
+        print(cal_path)
         for i, fname in enumerate(images_right):
             img_l = cv2.imread(images_left[i])
             img_r = cv2.imread(images_right[i])
@@ -475,7 +480,10 @@ class StereoCalibration():
 
 ########## ALL PUT TOGHETER ##########
 def main():
-    base_dir = r"D:\Download\CV_proj\.venv"  ### CHANGE THIS !!! ###
+    base_dir = r'D:\Download\CV_proj\.venv'  ### CHANGE THIS !!! ###
+    # Normalize the specified path
+    base_dir = os.path.normpath(base_dir)
+    print(base_dir)
     '''baseline_path = os.path.join(base_dir, "baseline_1.png")
     output_path = os.path.join(base_dir, "output.png")
 
@@ -486,7 +494,7 @@ def main():
     bones_2d = model_bones.get_bones_2d(camera_calibration.P)
     draw_bones(bones_2d, baseline_path, output_path)'''
 
-    cal_data = StereoCalibration(os.path.join(base_dir, "Stereo_images"))
+    cal_data = StereoCalibration(os.path.join(base_dir, "Stereo_images/"))
     cal_data.reProjectionError(cal_data.imgpoints_l, '1')
     cal_data.reProjectionError(cal_data.imgpoints_r, '2')
     # cal_data.getProjectionMatrix()

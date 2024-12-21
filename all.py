@@ -27,7 +27,7 @@ print("Blender's Python path:", python_path)
 subprocess.run([python_path, "-m", "ensurepip"])
 
 # Check if the required packages are installed
-required_packages = ["matplotlib", "glob"]
+required_packages = ["matplotlib", "glob", "scipy"]
 
 installed_packages = {pkg.name for pkg in pkgutil.iter_modules()}
 
@@ -354,8 +354,8 @@ class StereoCalibration():
                                                   corners_l, ret_l)
 
                 img_l = cv2.resize(img_l, (960, 540))
-                cv2.imshow(images_left[i], img_l)
-                cv2.waitKey(500)
+                # cv2.imshow(images_left[i], img_l)
+                # cv2.waitKey(500)
 
             if ret_r is True:
                 rt = cv2.cornerSubPix(gray_r, corners_r, (11, 11),
@@ -367,8 +367,8 @@ class StereoCalibration():
                                                   corners_r, ret_r)
 
                 img_r = cv2.resize(img_r, (960, 540))
-                cv2.imshow(images_right[i], img_r)
-                cv2.waitKey(500)
+                # cv2.imshow(images_right[i], img_r)
+                # cv2.waitKey(500)
             img_shape = gray_l.shape[::-1]
 
         # print("3D POINTS")
@@ -388,10 +388,10 @@ class StereoCalibration():
         flags = 0
         flags |= cv2.CALIB_FIX_INTRINSIC
         # flags |= cv2.CALIB_FIX_PRINCIPAL_POINT
-        flags |= cv2.CALIB_USE_INTRINSIC_GUESS
-        flags |= cv2.CALIB_FIX_FOCAL_LENGTH
+        # flags |= cv2.CALIB_USE_INTRINSIC_GUESS
+        # flags |= cv2.CALIB_FIX_FOCAL_LENGTH
         # flags |= cv2.CALIB_FIX_ASPECT_RATIO
-        flags |= cv2.CALIB_ZERO_TANGENT_DIST
+        # flags |= cv2.CALIB_ZERO_TANGENT_DIST
         # flags |= cv2.CALIB_RATIONAL_MODEL
         # flags |= cv2.CALIB_SAME_FOCAL_LENGTH
         # flags |= cv2.CALIB_FIX_K3
@@ -477,6 +477,37 @@ class StereoCalibration():
         # print(rightPoints.shape)
         return cv2.triangulatePoints(m1, m2, leftPoints, rightPoints)
 
+def compute_transform_matrix(position, rotation_angles_degrees):
+    """
+    Computes the 4x4 transformation matrix.
+
+    Args:
+        position: array-like, the camera position in the world coordinate system [x, y, z].
+        rotation_angles_degrees: array-like, the rotation angles [roll, pitch, yaw] in degrees.
+
+    Returns:
+        matrix: numpy array, 4x4 transformation matrix.
+    """
+    from scipy.spatial.transform import Rotation as R
+
+    # Camera position
+    translation = np.array(position)
+
+    # Convert angles from degrees to radians
+    rotation_angles_radians = np.radians(rotation_angles_degrees)
+
+    # Create the rotation matrix from Euler angles
+    # Rotation order: roll (x), pitch (y), yaw (z)
+    rotation = R.from_euler('xyz', rotation_angles_radians)  # Order: x, y, z
+    rotation_matrix = rotation.as_matrix()  # 3x3 rotation matrix
+
+    # Create the 4x4 transformation matrix
+    transform_matrix = np.eye(4)
+    transform_matrix[:3, :3] = rotation_matrix
+    transform_matrix[:3, 3] = translation
+
+    return transform_matrix
+
 
 ########## ALL PUT TOGHETER ##########
 def main():
@@ -502,13 +533,24 @@ def main():
     # TEST POINTS -> pollice1, mento, board1, board2
     # LEFT: (460, 665) - (1035, 401) - (1188, 686) - (715, 1062)
     # RIGHT: (422, 665) - (805, 400) - (1174, 686) - (699, 1061)
-    leftPoints = np.asarray([[460.0, 665.0], [1035.0, 401.0], [1188.0, 686.0], [715.0, 1062.0]])
-    rightPoints = np.asarray([[422.0, 665.0], [805.0, 400.0], [1174.0, 686.0], [699.0, 1061.0]])
+    # leftPoints = np.asarray([[460.0, 665.0], [1035.0, 401.0], [1188.0, 686.0], [715.0, 1062.0]])
+    rightPoints = np.asarray([[955.0, 649.0]])
+    leftPoints = np.asarray([[968, 665.0]])
     points_h = cal_data.triangulate3D(leftPoints, rightPoints)
     print("homogeneous points\n", points_h)
     points_h /= points_h[3]
     points_3D = points_h[:3, :].T
-    print("3D\n", points_3D)
+    print("Coordinate to camera system\n", points_3D)
+
+    # Example usage
+    camera_position = [-0.2, -1.40442, 14.4746]  # [x, y, z]
+    rotation_angles_degrees = [14.7156, 0.293606, 0.226724]  # [roll, pitch, yaw] in degrees
+
+    transform_matrix = compute_transform_matrix(camera_position, rotation_angles_degrees)
+    print("Transformation Matrix:\n", transform_matrix)
+    test_points = np.asarray((*points_3D[0], 1))
+    print(test_points)
+    print(test_points @ transform_matrix.T)
 
 
 if __name__ == "__main__":

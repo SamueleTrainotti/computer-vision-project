@@ -353,7 +353,7 @@ class StereoCalibration():
                 ret_l = cv2.drawChessboardCorners(img_l, (9, 6),
                                                   corners_l, ret_l)
 
-                img_l = cv2.resize(img_l, (960, 540))
+                # img_l = cv2.resize(img_l, (960, 540))
                 # cv2.imshow(images_left[i], img_l)
                 # cv2.waitKey(500)
 
@@ -366,7 +366,7 @@ class StereoCalibration():
                 ret_r = cv2.drawChessboardCorners(img_r, (9, 6),
                                                   corners_r, ret_r)
 
-                img_r = cv2.resize(img_r, (960, 540))
+                # img_r = cv2.resize(img_r, (960, 540))
                 # cv2.imshow(images_right[i], img_r)
                 # cv2.waitKey(500)
             img_shape = gray_l.shape[::-1]
@@ -381,6 +381,10 @@ class StereoCalibration():
             self.objpoints, self.imgpoints_l, img_shape, None, None)
         rt, self.M2, self.d2, self.r2, self.t2 = cv2.calibrateCamera(
             self.objpoints, self.imgpoints_r, img_shape, None, None)
+
+        hL, wL = gray_l.shape[:2]
+        self.M1, _ = cv2.getOptimalNewCameraMatrix(self.M1, self.d1, (wL, hL), 0, (wL, hL))
+        self.M2, _ = cv2.getOptimalNewCameraMatrix(self.M2, self.d2, (wL, hL), 0, (wL, hL))
 
         self.camera_model = self.stereo_calibrate(img_shape)
 
@@ -542,8 +546,7 @@ def main():
     points_3D = points_h[:3, :].T
     print("Coordinate to camera system\n", points_3D)
 
-    # Example usage
-    camera_position = [-0.2, -1.40442, 14.4746]  # [x, y, z]
+    # Example usage   camera_position = [-0.2, -1.40442, 14.4746]  # [x, y, z]
     rotation_angles_degrees = [14.7156, 0.293606, 0.226724]  # [roll, pitch, yaw] in degrees
 
     transform_matrix = compute_transform_matrix(camera_position, rotation_angles_degrees)

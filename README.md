@@ -48,7 +48,7 @@ To get started with the project, follow these steps:
 ## File Organization
 This repository contains the following key files and directories:
 
-`all.py`: A comprehensive script that includes all functionalities, covering both single-camera and stereo-camera calibration tasks. This script is also embedded in the Blender `.blend` files for seamless execution.
-`main.py`: A script specifically designed for single-camera calibration (Task 1). The logic is divided into smaller modules for ease of understanding and reusability.
-`/Blender_projects`: Contains Blender files with embedded scripts for single and stereo camera calibration. The Python script within these files is identical to the all.py script.
-`/Stereo_images`: A folder containing calibration images for the stereo setup. These images feature a chessboard pattern used to compute the intrinsic and extrinsic parameters of the two cameras.
+- `all.py`: A comprehensive script that includes all functionalities, covering both single-camera and stereo-camera calibration tasks. This script is also embedded in the Blender `.blend` files for seamless execution.
+- `main.py`: A script specifically designed for single-camera calibration (Task 1). The logic is divided into smaller modules for ease of understanding and reusability.
+- `/Blender_projects`: Contains Blender files with embedded scripts for single and stereo camera calibration. The Python script within these files is identical to the all.py script.
+- `/Stereo_images`: A folder containing calibration images for the stereo setup. These images feature a chessboard pattern used to compute the intrinsic and extrinsic parameters of the two cameras.

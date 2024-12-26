@@ -166,3 +166,6 @@ $RECYCLE.BIN/
 *.blend[0-9]*
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,windows,venv
+
+### MacOS ###
+.DS_Store

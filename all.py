@@ -7,9 +7,14 @@ from mathutils import Vector
 from mathutils import Matrix
 from enum import Enum
 
-####################################################
-########### INSTALL NEEDED EXTRA PACKAGES ##########
-####################################################
+############################################################
+############## INSTALL NEEDED EXTRA PACKAGES ###############
+############################################################
+'''
+This additional step is needed when working with scripts directly in Blender.
+Blender has its own python version, so installed packages in the machine (global/venv) are not avaiable.
+These lines install required packages locally within Blender (needed each time the program is opnened).
+'''
 # Get the path to the Python interpreter used by Blender
 python_path = sys.executable
 
@@ -40,14 +45,18 @@ for package in required_packages:
 
 # Add the folder to the Python import path
 sys.path.append(packages_directory)
-####################################################
+############################################################
 
+############################################################
+############### GLOBAL IMPORTS AND VARIABLES ###############
+############################################################
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
 ##### Define the 2D points #####
+# Coordinates of each calibration cube in the 2d plane of the camera
 points2dZ11 = [(346, 1053), (991, 1053), (1636, 1053), (1894, 458), (1803, 61), (1391, 61), (527, 61), (116, 61),
                (25, 458), (1515, 436), (405, 436), (1838, 262), (80, 262)]
 points2dZ9 = [(70, 971), (504, 971), (939, 971), (1372, 971), (1806, 971), (1667, 517), (1555, 239), (363, 239),
@@ -60,6 +69,7 @@ points2dZ3 = [(576, 798), (764, 798), (951, 798), (1138, 798), (1324, 798), (130
               (614, 595), (1136, 595), (783, 595)]
 
 ##### Define the 3D points #####
+# Coordinates of each calibration cube in the 3d world
 centerCubes3d = [(-8, -4, 0), (-4, -4, 0), (0, -4, 0), (4, -4, 0), (8, -4, 0), (8, 0, 0), (8, 4, 0), (-8, 4, 0),
                  (-8, 0, 0), (4, 0, 0), (-4, 0, 0)]
 points3dZ3, points3dZ5, points3dZ7, points3dZ9, points3dZ11 = [], [], [], [], []
@@ -99,10 +109,26 @@ points3dZ3 += [(centerCubes3d[9][0] + 0.2, centerCubes3d[9][1] + 0.2, centerCube
 points3dZ11 += [(3.8, 0.2, 12.8), (-3.8, +0.2, 12.8)]
 
 
-##### CALIBRATION CLASS #####
+############################################################
+
+############################################################
+#################### CALIBRATION CLASS #####################
+############################################################
 class Calibration:
+    """
+    Helper class for single camera calibration.
+
+    Attributes:
+        - :class:`numpy.ndarray`P --> Projection matrix
+        - :class:`numpy.ndarray`K --> Intrinsic parameters matrix (calculated in the calibration method)
+    """
 
     def __init__(self, image_path):
+        """
+        Initialize know parameters relative to the camera sensor.
+
+        :param image_path: Path to the image
+        """
         self.FOCAL_LENGTH = 9  # Focal length in mm
         self.SENSOR_SIZE = (36, 24)  # Sensor size in mm
         self.RESOLUTION = (1920, 1080)  # Image resolution in pixels
@@ -119,6 +145,13 @@ class Calibration:
         self.P = None
 
     def show_points_on_image(self, image_path, points):
+        """
+        Plots a given set of points on the image
+
+        :param image_path: Path to the image
+        :param points: Array of (x,y) points on the image
+        :return:
+        """
         # Load the image
         image = cv2.imread(image_path)
 
@@ -149,7 +182,12 @@ class Calibration:
         cv2.destroyAllWindows()
 
     def plot_3d_points(self, points, _3d=True):
+        """
+        Makes a 2d or 3d plot of given 3d points.
 
+        :param points: Array of (x,y,z) points to be plotted
+        :param _3d: Flag indicating if the plot should be 3D or 2D
+        """
         # Estract the x, y and z coordinates from the points
         x_coords = [point[0] for point in points]
         y_coords = [point[1] for point in points]
@@ -186,6 +224,11 @@ class Calibration:
         plt.show()
 
     def get_intrinsic_parameters(self):
+        """
+        Calculate the intrinsic matrix of the camera based on the sensor's parameters.
+
+        :return: Intrinsic matrix
+        """
         # Parameters of intrinsic matrix K
         fx = self.FOCAL_LENGTH * self.RESOLUTION[0] * self.SCALE / self.SENSOR_SIZE[0]
         fy = self.FOCAL_LENGTH * self.RESOLUTION[1] * self.SCALE / self.SENSOR_SIZE[1]
@@ -200,6 +243,11 @@ class Calibration:
         return K
 
     def calibrate(self):
+        """
+        Perform the calibration of the camera sensor. This calculate internally the projection matrix.
+        A predefined set of calibration points is used.
+
+        """
         # Get the intrinsic parameters
         self.K = self.get_intrinsic_parameters()
         print("Intrinsic Matrix:", self.K)
@@ -221,41 +269,64 @@ class Calibration:
         self.P = self.K.dot(extrinsic_matrix)
         print("Projection Matrix:", self.P)
 
-        object_points = np.array([[1.2, 0, 13.5], [1, 1.5, 12], [3, 3, 13], [-3, 3, 10], [0, -2, 8]], dtype=np.float32)
-
-        self.projectPoints(object_points)
-
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
 
     def projectPoints(self, object_points):
+        """
+        Get the projection of a list of 3d points in the image plane
+
+        :param object_points: Array of (x,y,z) points in the world
+        :return: A list of 2d points in the image plane
+        """
+        # compute 2d coordinates
         image_points, _ = cv2.projectPoints(object_points, self.rotation_vector, self.translation_vector, self.K,
                                             self.distortion_coefficients)
 
         image_points_list = [tuple(point[0]) for point in image_points]
         print("Image Points:", image_points_list)
 
-        self.show_points_on_image(self.image_path, image_points_list)
+        return image_points_list
         # plot_3d_points(object_points, _3d=False)
 
 
-#############################################
+############################################################
+
+############################################################
+#################### MODEL BONES CLASS #####################
+############################################################
 class ModelBones:
-    def __init__(self):
+    """
+    This class simplify the management of the armature bones.
+    """
+
+    def __init__(self, armature_name="Armature"):
+        """
+        Initialize the internal structure.
+
+        :param armature_name: Name of the armature object.
+        """
         self.bones_3d = []
-        body = bpy.data.objects["Armature"]
+        body = bpy.data.objects[armature_name]
 
         if body:
             for bone in body.data.bones:
+                # calculates starting and ending coordinates of each bone
                 tail = body.matrix_world @ bone.tail_local
                 head = body.matrix_world @ bone.head_local
 
                 self.bones_3d.append(tuple((Vector(tail), Vector(head))))
-            print(len(self.bones_3d))
         else:
-            print("Nessuna armatura trovata.")
+            print(f"No armature found with name {armature_name}.")
 
     def get_bones_2d(self, matrix):
+        """
+        Computes 2d coordinates of the bone points in the image plane.
+
+        :param matrix: The projection matrix of the camera
+        :return: A list of 2d points in the image plane
+        """
+        # convert numpy matrix to Blender-specific format
         matrix = Matrix(matrix)
         bones_2d = []
         for p1_3d, p2_3d in self.bones_3d:
@@ -265,6 +336,13 @@ class ModelBones:
         return bones_2d
 
     def compute_2d(self, point, matrix):
+        """
+        Coverts the given 3d point to 2d coordinates.
+
+        :param point: The 3d point to convert
+        :param matrix: The projection matrix of the camera
+        :return: The computed 2d coordinates
+        """
         point = Vector(point)
         tmp = point.to_4d()
         p_2d = matrix @ tmp
@@ -274,8 +352,15 @@ class ModelBones:
         return p_2d
 
 
-##################################################################
+############################################################
 def draw_bones(bones_2d, filename, output):
+    """
+    Draw a list of bones in the image plane.
+
+    :param bones_2d: A list of bones in 2d coordinates
+    :param filename: The path of the image to draw on
+    :param output: The path of the output file
+    """
     # Try to draw all bones on final image
     print("PRINTING BONES ON IMAGE")
     img = cv2.imread(filename)
@@ -289,14 +374,31 @@ def draw_bones(bones_2d, filename, output):
     cv2.destroyAllWindows()
 
 
-##################################################################
+############################################################
+
+############################################################
+################### STEREO CALIBRATION #####################
+############################################################
 # https://github.com/bvnayak/stereo_calibration/blob/master/camera_calibrate.py
 class CameraView(Enum):
-    LEFT = 0
-    RIGHT = 1
+    """
+    Helper class to specify which camera to use.
+    """
+    LEFT = 1
+    RIGHT = 2
+
 
 class StereoCalibration():
+    """
+    This class contains methods to calibrate the stereo camera.
+    """
+
     def __init__(self, filepath):
+        """
+        Initialize calibration points and criteria.
+
+        :param filepath: The path of the image to calibrate
+        """
         # termination criteria
         self.criteria = (cv2.TERM_CRITERIA_EPS +
                          cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -304,7 +406,7 @@ class StereoCalibration():
                              cv2.TERM_CRITERIA_MAX_ITER, 100, 1e-5)
 
         # prepare object points
-        self.objp = np.zeros((9*6, 3), np.float32)
+        self.objp = np.zeros((9 * 6, 3), np.float32)
         self.objp[:, :2] = np.mgrid[0:9, 0:6].T.reshape(-1, 2)
         # each square has size 1,2494 x -1,2494
         self.objp *= 1.2494
@@ -315,21 +417,30 @@ class StereoCalibration():
         self.imgpoints_r = []  # 2d points in image plane.
 
         self.cal_path = filepath
-        self.read_images(self.cal_path)
+        self.img_shape = None
+        self.camera_model = None
 
-    def read_images(self, cal_path):
-        print(cal_path)
-        print(glob.escape(cal_path))
+    def read_images(self, cal_path=None):
+        """
+        Load the images needed for the calibration and perform single camera calibration for each device.
+
+        :param cal_path: The path to the images folder
+        """
+        if cal_path is None:
+            cal_path = self.cal_path
+
+        # print(cal_path)
+        # print(glob.escape(cal_path))
         cal_path = cal_path.replace('\\', '\/')
-        print(cal_path)
-        print(glob.escape(cal_path))
+        # print(cal_path)
+        # print(glob.escape(cal_path))
 
         images_right = glob.glob(cal_path + 'RIGHT/*.png')
         images_left = glob.glob(cal_path + 'LEFT/*.png')
         images_left.sort()
         images_right.sort()
 
-        print(cal_path)
+        # print(cal_path)
         for i, fname in enumerate(images_right):
             img_l = cv2.imread(images_left[i])
             img_r = cv2.imread(images_right[i])
@@ -344,32 +455,31 @@ class StereoCalibration():
             # If found, add object points, image points (after refining them)
             self.objpoints.append(self.objp)
 
-            if ret_l is True:
-                rt = cv2.cornerSubPix(gray_l, corners_l, (11, 11),
-                                      (-1, -1), self.criteria)
+            if ret_l is True and ret_r is True:
+                cv2.cornerSubPix(gray_l, corners_l, (11, 11),
+                                 (-1, -1), self.criteria)
                 self.imgpoints_l.append(corners_l)
 
                 # Draw and display the corners
-                ret_l = cv2.drawChessboardCorners(img_l, (9, 6),
-                                                  corners_l, ret_l)
+                cv2.drawChessboardCorners(img_l, (9, 6),
+                                          corners_l, ret_l)
 
                 # img_l = cv2.resize(img_l, (960, 540))
                 # cv2.imshow(images_left[i], img_l)
                 # cv2.waitKey(500)
 
-            if ret_r is True:
-                rt = cv2.cornerSubPix(gray_r, corners_r, (11, 11),
-                                      (-1, -1), self.criteria)
+                cv2.cornerSubPix(gray_r, corners_r, (11, 11),
+                                 (-1, -1), self.criteria)
                 self.imgpoints_r.append(corners_r)
 
                 # Draw and display the corners
-                ret_r = cv2.drawChessboardCorners(img_r, (9, 6),
-                                                  corners_r, ret_r)
+                cv2.drawChessboardCorners(img_r, (9, 6),
+                                          corners_r, ret_r)
 
                 # img_r = cv2.resize(img_r, (960, 540))
                 # cv2.imshow(images_right[i], img_r)
                 # cv2.waitKey(500)
-            img_shape = gray_l.shape[::-1]
+        self.img_shape = gray_l.shape[::-1]
 
         # print("3D POINTS")
         # print(self.objpoints)
@@ -377,8 +487,11 @@ class StereoCalibration():
         # print(self.imgpoints_l)
         # print("2D RIGHT")
         # print(self.imgpoints_r)
+
+        # left camera calibration
         rt, self.M1, self.d1, self.r1, self.t1 = cv2.calibrateCamera(
             self.objpoints, self.imgpoints_l, img_shape, None, None)
+        # right camera calibration
         rt, self.M2, self.d2, self.r2, self.t2 = cv2.calibrateCamera(
             self.objpoints, self.imgpoints_r, img_shape, None, None)
 
@@ -386,9 +499,16 @@ class StereoCalibration():
         self.M1, _ = cv2.getOptimalNewCameraMatrix(self.M1, self.d1, (wL, hL), 0, (wL, hL))
         self.M2, _ = cv2.getOptimalNewCameraMatrix(self.M2, self.d2, (wL, hL), 0, (wL, hL))
 
-        self.camera_model = self.stereo_calibrate(img_shape)
+    def stereo_calibrate(self, dims=None):
+        """
+        Perform stereo calibration and save the resulting camera matrix and other parameters.
 
-    def stereo_calibrate(self, dims):
+        :param dims: Image dimensions
+        :return: Return a dictionary with all camera calibration parameters.
+        """
+        if dims == None:
+            dims = self.img_shape
+
         flags = 0
         flags |= cv2.CALIB_FIX_INTRINSIC
         # flags |= cv2.CALIB_FIX_PRINCIPAL_POINT
@@ -431,44 +551,59 @@ class StereoCalibration():
         camera_model = dict([('M1', M1), ('M2', M2), ('dist1', d1),
                              ('dist2', d2), ('rvecs1', self.r1),
                              ('rvecs2', self.r2), ('tvecs1', self.t1),
-                             ('tvecs2', self.t2),('R', R), ('T', T),
+                             ('tvecs2', self.t2), ('R', R), ('T', T),
                              ('E', E), ('F', F)])
 
         cv2.destroyAllWindows()
         return camera_model
 
-    def reProjectionError(self, imgpoints, n = '1'):
+    def reProjectionError(self, imgpoints, side=CameraView.LEFT):
+        """
+        Calculate the projection error on the given camera
+
+        :param imgpoints: A list of image points in the image plane
+        :param side: An enum indicating wich camera to consider
+        """
         mean_error = 0
-        mtx = self.camera_model['M'+n]
-        dist = self.camera_model['dist'+n]
-        rvecs = self.camera_model['rvecs'+n]
-        tvecs = self.camera_model['tvecs'+n]
+        mtx = self.camera_model['M' + side.value]
+        dist = self.camera_model['dist' + side.value]
+        rvecs = self.camera_model['rvecs' + side.value]
+        tvecs = self.camera_model['tvecs' + side.value]
 
         for i in range(len(self.objpoints)):
             imgpoints2, _ = cv2.projectPoints(self.objpoints[i], rvecs[i], tvecs[i], mtx, dist)
-            error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
+            error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
             mean_error += error
 
-        print( "total error: {}".format(mean_error/len(self.objpoints)) )
+        print("total error: {}".format(mean_error / len(self.objpoints)))
 
-    def getProjectionMatrix(self, side = CameraView.LEFT):
-        if(side == CameraView.LEFT):
-            mtx = self.camera_model['M1']
-            rvecs = self.camera_model['rvecs1']
-            tvecs = self.camera_model['tvecs1']
-        else:
-            mtx = self.camera_model['M2']
-            rvecs = self.camera_model['rvecs2']
-            tvecs = self.camera_model['tvecs2']
+    def getProjectionMatrix(self, side=CameraView.LEFT):
+        """
+        Get the projection matrix of the given camera
+
+        :param side: An enum indicating wich camera to consider
+        :return: The projection matrix
+        """
+        mtx = self.camera_model['M' + side.value]
+        dist = self.camera_model['dist' + side.value]
+        rvecs = self.camera_model['rvecs' + side.value]
+        tvecs = self.camera_model['tvecs' + side.value]
 
         R = cv2.Rodrigues(rvecs[0])[0]
         t = tvecs[0]
-        Rt = np.concatenate([R,t], axis=-1) # [R|t]
-        P = np.matmul(mtx,Rt) # A[R|t]
+        Rt = np.concatenate([R, t], axis=-1)  # [R|t]
+        P = np.matmul(mtx, Rt)  # A[R|t]
         print(P)
         return P
 
     def triangulate3D(self, leftPoints, rightPoints):
+        """
+        Calculate the 3d coordinates of the given pairs of 2d correspondences
+
+        :param leftPoints: A list of image points in the image plane
+        :param rightPoints: A list of image points in the image plane
+        :return: A list of 3d points in the real world
+        """
         m1 = self.getProjectionMatrix(CameraView.LEFT)
         m2 = self.getProjectionMatrix(CameraView.RIGHT)
         leftPoints = np.transpose(leftPoints)
@@ -481,16 +616,14 @@ class StereoCalibration():
         # print(rightPoints.shape)
         return cv2.triangulatePoints(m1, m2, leftPoints, rightPoints)
 
+
 def compute_transform_matrix(position, rotation_angles_degrees):
     """
     Computes the 4x4 transformation matrix.
 
-    Args:
-        position: array-like, the camera position in the world coordinate system [x, y, z].
-        rotation_angles_degrees: array-like, the rotation angles [roll, pitch, yaw] in degrees.
-
-    Returns:
-        matrix: numpy array, 4x4 transformation matrix.
+    :param position: Array-like, the camera position in the world coordinate system [x, y, z].
+    :param rotation_angles_degrees: Array-like, the rotation angles [roll, pitch, yaw] in degrees.
+    :return: A numpy array, 4x4 transformation matrix.
     """
     from scipy.spatial.transform import Rotation as R
 
@@ -512,26 +645,39 @@ def compute_transform_matrix(position, rotation_angles_degrees):
 
     return transform_matrix
 
+############################################################
 
-########## ALL PUT TOGHETER ##########
+############################################################
+##################### ALL PUT TOGHETER #####################
+############################################################
 def main():
     base_dir = r'D:\Download\CV_proj\.venv'  ### CHANGE THIS !!! ###
     # Normalize the specified path
     base_dir = os.path.normpath(base_dir)
     print(base_dir)
+
+    # STEP 1
     '''baseline_path = os.path.join(base_dir, "baseline_1.png")
     output_path = os.path.join(base_dir, "output.png")
 
     camera_calibration = Calibration(baseline_path)
     camera_calibration.calibrate()
-
+    test_points_2d = np.array([[1.2, 0, 13.5], [1, 1.5, 12], [3, 3, 13], [-3, 3, 10], [0, -2, 8]], dtype=np.float32)
+    projections = camera_calibration.projectPoints(test_points_2d)
+    camera_calibration.show_points_on_image(baseline_path, projections)
+    
+    # STEP 2
     model_bones = ModelBones()
     bones_2d = model_bones.get_bones_2d(camera_calibration.P)
     draw_bones(bones_2d, baseline_path, output_path)'''
 
-    cal_data = StereoCalibration(os.path.join(base_dir, "Stereo_images/"))
-    cal_data.reProjectionError(cal_data.imgpoints_l, '1')
-    cal_data.reProjectionError(cal_data.imgpoints_r, '2')
+    # STEP 3
+    stereo_calibration = StereoCalibration(os.path.join(base_dir, "Stereo_images/"))
+    stereo_calibration.read_images()
+    stereo_calibration.camera_model = stereo_calibration.stereo_calibrate()
+
+    stereo_calibration.reProjectionError(stereo_calibration.imgpoints_l, CameraView.LEFT)
+    stereo_calibration.reProjectionError(stereo_calibration.imgpoints_r, CameraView.RIGHT)
     # cal_data.getProjectionMatrix()
     # cal_data.getProjectionMatrix(CameraView.RIGHT)
     # TEST POINTS -> pollice1, mento, board1, board2
@@ -540,7 +686,7 @@ def main():
     # leftPoints = np.asarray([[460.0, 665.0], [1035.0, 401.0], [1188.0, 686.0], [715.0, 1062.0]])
     rightPoints = np.asarray([[955.0, 649.0]])
     leftPoints = np.asarray([[968, 665.0]])
-    points_h = cal_data.triangulate3D(leftPoints, rightPoints)
+    points_h = stereo_calibration.triangulate3D(leftPoints, rightPoints)
     print("homogeneous points\n", points_h)
     points_h /= points_h[3]
     points_3D = points_h[:3, :].T
